@@ -1,60 +1,103 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
     <title>Admin Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <style> #map { height: 500px; } </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
-<body class="p-4">
-    <div class="d-flex justify-content-between">
-        <h2>Admin Overview</h2>
-        <a href="/" class="btn btn-secondary">Logout</a>
-    </div>
+<body>
 
-    <!-- Add Bin Form -->
-    <div class="card my-3 p-3">
-        <h5>Add New Bin</h5>
-        <form method="POST" class="row g-3">
-            <div class="col-md-3"><input type="text" name="bin_id" class="form-control" placeholder="Bin ID (e.g. BIN-002)" required></div>
-            <div class="col-md-3"><input type="number" step="any" name="lat" class="form-control" placeholder="Latitude" required></div>
-            <div class="col-md-3"><input type="number" step="any" name="lon" class="form-control" placeholder="Longitude" required></div>
-            <div class="col-md-3"><button type="submit" class="btn btn-primary w-100">Add Bin</button></div>
-        </form>
+<nav class="navbar navbar-dark bg-dark mb-4">
+    <div class="container">
+        <a class="navbar-brand" href="/">Prioribin Admin</a>
+        <div class="d-flex gap-2">
+            <a href="/collector" class="btn btn-outline-warning btn-sm" target="_blank">Open Collector View</a>
+            <a href="/" class="btn btn-outline-light btn-sm">Logout</a>
+        </div>
     </div>
+</nav>
 
+<div class="container">
     <div class="row">
+        <!-- Add Bin Form -->
         <div class="col-md-4">
-            <h4>Bin Status</h4>
-            <ul class="list-group">
-                {% for bin in bins %}
-                <li class="list-group-item d-flex justify-content-between align-items-center">
-                    {{ bin.bin_id }}
-                    <span class="badge bg-{{ 'danger' if bin.status == 'Critical' else 'warning' if bin.status == 'Warning' else 'success' }} rounded-pill">
-                        {{ bin.fill_level }}%
-                    </span>
-                </li>
-                {% endfor %}
-            </ul>
+            <div class="card p-3 mb-4 shadow-sm">
+                <h5>➕ Add New Bin</h5>
+                <form action="/add_bin" method="POST">
+                    <input type="text" name="bin_id" class="form-control mb-2" placeholder="ID (e.g. BIN-01)" required>
+                    <input type="number" step="any" name="lat" class="form-control mb-2" placeholder="Latitude (e.g 9.93)" required>
+                    <input type="number" step="any" name="lon" class="form-control mb-2" placeholder="Longitude (e.g 76.26)" required>
+                    <button type="submit" class="btn btn-primary w-100">Create Bin</button>
+                </form>
+            </div>
         </div>
+
+        <!-- Bin List with Manual Controls -->
         <div class="col-md-8">
-            <div id="map"></div>
+            <div class="card p-3 shadow-sm mb-4">
+                <h5>📡 Bin Status & Manual Controls</h5>
+                <p class="text-muted small">Use the slider to simulate fill levels. Only <b>Warning (70%+)</b> bins appear in Collector View.</p>
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead>
+                            <tr>
+                                <th>Bin ID</th>
+                                <th>Status</th>
+                                <th>Simulate Fill Level</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for bin in bins %}
+                            <tr>
+                                <td><strong>{{ bin.bin_id }}</strong></td>
+                                <td>
+                                    <span class="badge 
+                                        {% if bin.status == 'Critical' %}bg-danger
+                                        {% elif bin.status == 'Warning' %}bg-warning text-dark
+                                        {% else %}bg-success{% endif %}">
+                                        {{ bin.status }} ({{ bin.fill_level }}%)
+                                    </span>
+                                </td>
+                                <td>
+                                    <!-- Manual Simulator Form -->
+                                    <form action="/manual_update" method="POST" class="d-flex gap-2">
+                                        <input type="hidden" name="bin_id" value="{{ bin.bin_id }}">
+                                        <input type="range" name="fill_level" class="form-range" min="0" max="100" value="{{ bin.fill_level }}" oninput="this.nextElementSibling.value = this.value + '%'">
+                                        <output>{{ bin.fill_level }}%</output>
+                                </td>
+                                <td>
+                                        <button type="submit" class="btn btn-sm btn-outline-primary">Update</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Map Preview -->
+             <div class="card">
+                <div id="map" style="height: 300px;"></div>
+             </div>
         </div>
     </div>
+</div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script>
-        var map = L.map('map').setView([9.9312, 76.2673], 13);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    var map = L.map('map').setView([9.9312, 76.2673], 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
 
-        // Add markers for all bins from backend
-        // (In a real app, use fetch API, here using Jinja loop for simplicity)
-        {% for bin in bins %}
-            L.circleMarker([{{ bin.location_lat }}, {{ bin.location_lon }}], {
-                color: "{{ 'red' if bin.status == 'Critical' else 'orange' if bin.status == 'Warning' else 'green' }}",
-                radius: 10
-            }).addTo(map).bindPopup("<b>{{ bin.bin_id }}</b><br>Level: {{ bin.fill_level }}%");
-        {% endfor %}
-    </script>
+    {% for bin in bins %}
+        var color = "{{ 'red' if bin.status == 'Critical' else 'orange' if bin.status == 'Warning' else 'green' }}";
+        L.circleMarker([{{ bin.location_lat }}, {{ bin.location_lon }}], {
+            color: color, fillColor: color, fillOpacity: 0.8, radius: 8
+        }).addTo(map).bindPopup("<b>{{ bin.bin_id }}</b><br>Level: {{ bin.fill_level }}%");
+    {% endfor %}
+</script>
 </body>
 </html>

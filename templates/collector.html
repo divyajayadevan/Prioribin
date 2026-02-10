@@ -1,68 +1,133 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Collector View</title>
+    <meta charset="UTF-8">
+    <title>Collector Route</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Leaflet & Routing Machine -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <!-- Routing Machine CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
-    <style> #map { height: 600px; } </style>
-</head>
-<body class="p-4">
-    <h2>Collector Route (High Priority Only)</h2>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     
-    <div class="row">
-        <div class="col-md-4">
-            <div id="task-list">
-                {% for bin in bins %}
-                <div class="card mb-2 p-3 border-danger">
-                    <h5>{{ bin.bin_id }}</h5>
-                    <p>Status: <strong>{{ bin.status }}</strong> ({{ bin.fill_level }}%)</p>
-                    <button onclick="markCollected('{{ bin.bin_id }}')" class="btn btn-success btn-sm">✅ Mark as Collected</button>
-                </div>
-                {% else %}
-                <div class="alert alert-success">No critical bins! Good job.</div>
-                {% endfor %}
-            </div>
-        </div>
-        <div class="col-md-8">
-            <div id="map"></div>
-        </div>
+    <style>
+        /* Floating legend/instruction box */
+        .info-box {
+            position: absolute;
+            top: 80px;
+            right: 10px;
+            z-index: 1000;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+            width: 300px;
+        }
+    </style>
+</head>
+<body>
+
+<nav class="navbar navbar-dark bg-success">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="/">🚚 Prioribin Collector</a>
+        <span class="navbar-text text-white">
+            Optimized Route (High Priority Only)
+        </span>
     </div>
+</nav>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <!-- Routing Machine JS -->
-    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+<!-- Full screen map -->
+<div id="map" style="height: 92vh; width: 100%;"></div>
 
-    <script>
-        var map = L.map('map').setView([9.9312, 76.2673], 13);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-
-        // 1. Get Waypoints (Locations of bins)
-        var waypoints = [
-            L.latLng(9.9312, 76.2673), // Start point (e.g., Garbage Depot)
+<!-- Info Panel Overlay -->
+<div class="info-box">
+    <h5>Route Summary</h5>
+    {% if bins|length == 0 %}
+        <div class="alert alert-success mb-0">
+            ✅ <b>All clear!</b><br>
+            No bins are currently Warning (70%) or Critical (90%).
+        </div>
+    {% else %}
+        <p><strong>{{ bins|length }}</strong> bins require collection.</p>
+        <ul class="list-group list-group-flush small" style="max-height: 200px; overflow-y: auto;">
             {% for bin in bins %}
-                L.latLng({{ bin.location_lat }}, {{ bin.location_lon }}),
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                {{ bin.bin_id }}
+                <span class="badge bg-danger">{{ bin.fill_level }}%</span>
+            </li>
             {% endfor %}
-        ];
+        </ul>
+        <div class="mt-2 text-muted" style="font-size: 0.8rem;">
+            *Click markers on map to collect.
+        </div>
+    {% endif %}
+</div>
 
-        // 2. Draw Route automatically
-        if (waypoints.length > 1) {
-            L.Routing.control({
-                waypoints: waypoints,
-                routeWhileDragging: false,
-                show: false // Hide the text instructions, just show line
-            }).addTo(map);
-        }
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
 
-        // 3. Button Logic
-        function markCollected(binId) {
-            fetch(`/api/collect_bin/${binId}`, { method: 'POST' })
-            .then(res => res.json())
-            .then(data => {
-                if(data.success) location.reload(); // Refresh page to remove bin from list
-            });
-        }
-    </script>
+<script>
+    // Initialize Map
+    var map = L.map('map').setView([9.9312, 76.2673], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+
+    // 1. Define the Depot (Starting Point for the truck)
+    var depotLat = 9.9312;
+    var depotLon = 76.2673;
+    var depot = L.latLng(depotLat, depotLon);
+    
+    // Add Depot Marker
+    L.marker([depotLat, depotLon]).addTo(map).bindPopup("<b>Depot</b><br>Start Here").openPopup();
+
+    // 2. Collect Waypoints (Only the bins passed from backend)
+    var waypoints = [depot];
+    
+    {% for bin in bins %}
+        // Create marker
+        var marker = L.marker([{{ bin.location_lat }}, {{ bin.location_lon }}], {
+            title: "{{ bin.bin_id }}"
+        }).addTo(map);
+
+        // Popup with "Mark Collected" button
+        marker.bindPopup(`
+            <div class="text-center">
+                <h6>{{ bin.bin_id }}</h6>
+                <div class="badge bg-danger mb-2">Fill: {{ bin.fill_level }}%</div><br>
+                <button class="btn btn-primary btn-sm" onclick="markCollected('{{ bin.bin_id }}')">
+                    ✅ Mark as Collected
+                </button>
+            </div>
+        `);
+
+        // Add to route
+        waypoints.push(L.latLng({{ bin.location_lat }}, {{ bin.location_lon }}));
+    {% endfor %}
+
+    // 3. Draw Route if there are bins to collect
+    if (waypoints.length > 1) {
+        L.Routing.control({
+            waypoints: waypoints,
+            routeWhileDragging: false,
+            showAlternatives: false,
+            lineOptions: { styles: [{color: 'blue', opacity: 0.6, weight: 4}] },
+            createMarker: function() { return null; }, // We already added custom markers above
+            addWaypoints: false,
+            draggableWaypoints: false,
+            fitSelectedRoutes: true
+        }).addTo(map);
+    }
+
+    // 4. Function to handle collection
+    function markCollected(binId) {
+        if(!confirm("Confirm you have emptied bin " + binId + "?")) return;
+
+        fetch(`/api/collect_bin/${binId}`, { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+            alert("Bin Collected! Removing from route...");
+            location.reload(); // Reloads page, backend filters out the empty bin
+        })
+        .catch(error => console.error('Error:', error));
+    }
+</script>
 </body>
 </html>
