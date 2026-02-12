@@ -1,133 +1,157 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Collector Route</title>
+    <title>Collector Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Leaflet & Routing Machine -->
+    <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
     
     <style>
-        /* Floating legend/instruction box */
-        .info-box {
-            position: absolute;
-            top: 80px;
-            right: 10px;
-            z-index: 1000;
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 0 15px rgba(0,0,0,0.2);
-            width: 300px;
+        body { overflow-x: hidden; }
+        #map { height: 100vh; width: 100%; z-index: 1; }
+        
+        /* Floating Sidebar */
+        .sidebar {
+            position: absolute; top: 10px; left: 10px; bottom: 10px;
+            width: 350px; background: white; z-index: 1000;
+            padding: 15px; border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            overflow-y: auto;
+        }
+
+        /* Mobile Sidebar */
+        @media (max-width: 768px) {
+            .sidebar {
+                top: auto; left: 0; bottom: 0;
+                width: 100%; height: 45vh;
+                border-radius: 20px 20px 0 0;
+            }
+            #map { height: 55vh; }
         }
     </style>
 </head>
 <body>
 
-<nav class="navbar navbar-dark bg-success">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="/">🚚 Prioribin Collector</a>
-        <span class="navbar-text text-white">
-            Optimized Route (High Priority Only)
-        </span>
-    </div>
-</nav>
+    <!-- Map -->
+    <div id="map"></div>
 
-<!-- Full screen map -->
-<div id="map" style="height: 92vh; width: 100%;"></div>
-
-<!-- Info Panel Overlay -->
-<div class="info-box">
-    <h5>Route Summary</h5>
-    {% if bins|length == 0 %}
-        <div class="alert alert-success mb-0">
-            ✅ <b>All clear!</b><br>
-            No bins are currently Warning (70%) or Critical (90%).
+    <!-- Dashboard Sidebar -->
+    <div class="sidebar">
+        <h4 class="fw-bold text-primary">🚛 Route Assistant</h4>
+        <div id="gps-status" class="alert alert-info py-1 small">
+            <div class="spinner-border spinner-border-sm"></div> Acquiring GPS...
         </div>
-    {% else %}
-        <p><strong>{{ bins|length }}</strong> bins require collection.</p>
-        <ul class="list-group list-group-flush small" style="max-height: 200px; overflow-y: auto;">
+        <hr>
+        
+        <div id="task-list">
             {% for bin in bins %}
-            <li class="list-group-item d-flex justify-content-between align-items-center">
-                {{ bin.bin_id }}
-                <span class="badge bg-danger">{{ bin.fill_level }}%</span>
-            </li>
-            {% endfor %}
-        </ul>
-        <div class="mt-2 text-muted" style="font-size: 0.8rem;">
-            *Click markers on map to collect.
-        </div>
-    {% endif %}
-</div>
+            <div class="card mb-3 shadow-sm border-{{ 'danger' if bin.status == 'Critical' else 'warning' }}">
+                <div class="card-body p-2">
+                    <div class="d-flex justify-content-between">
+                        <h6 class="fw-bold">{{ bin.bin_id }}</h6>
+                        <span class="badge bg-{{ 'danger' if bin.status == 'Critical' else 'warning' }}">{{ bin.fill_level }}% Full</span>
+                    </div>
+                    
+                    <div class="mt-2 d-grid gap-2">
+                        <!-- 1. GOOGLE MAPS NAVIGATION BUTTON -->
+                        <!-- This opens the real Google Maps app with the route -->
+                        <a href="https://www.google.com/maps/dir/?api=1&destination={{ bin.location_lat }},{{ bin.location_lon }}" 
+                           target="_blank" 
+                           class="btn btn-primary btn-sm">
+                           📍 Navigate (Google Maps)
+                        </a>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
-
-<script>
-    // Initialize Map
-    var map = L.map('map').setView([9.9312, 76.2673], 13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
-
-    // 1. Define the Depot (Starting Point for the truck)
-    var depotLat = 9.9312;
-    var depotLon = 76.2673;
-    var depot = L.latLng(depotLat, depotLon);
-    
-    // Add Depot Marker
-    L.marker([depotLat, depotLon]).addTo(map).bindPopup("<b>Depot</b><br>Start Here").openPopup();
-
-    // 2. Collect Waypoints (Only the bins passed from backend)
-    var waypoints = [depot];
-    
-    {% for bin in bins %}
-        // Create marker
-        var marker = L.marker([{{ bin.location_lat }}, {{ bin.location_lon }}], {
-            title: "{{ bin.bin_id }}"
-        }).addTo(map);
-
-        // Popup with "Mark Collected" button
-        marker.bindPopup(`
-            <div class="text-center">
-                <h6>{{ bin.bin_id }}</h6>
-                <div class="badge bg-danger mb-2">Fill: {{ bin.fill_level }}%</div><br>
-                <button class="btn btn-primary btn-sm" onclick="markCollected('{{ bin.bin_id }}')">
-                    ✅ Mark as Collected
-                </button>
+                        <!-- 2. MARK COLLECTED BUTTON -->
+                        <button onclick="markCollected('{{ bin.bin_id }}')" class="btn btn-outline-success btn-sm">
+                            ✅ Mark Cleaned
+                        </button>
+                    </div>
+                </div>
             </div>
-        `);
+            {% else %}
+            <div class="text-center text-muted mt-5">
+                <h5>🎉 All Clear!</h5>
+                <p>No critical bins assigned.</p>
+            </div>
+            {% endfor %}
+        </div>
+        <a href="/" class="btn btn-secondary w-100 mt-2 btn-sm">Exit</a>
+    </div>
 
-        // Add to route
-        waypoints.push(L.latLng({{ bin.location_lat }}, {{ bin.location_lon }}));
-    {% endfor %}
+    <!-- Scripts -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
 
-    // 3. Draw Route if there are bins to collect
-    if (waypoints.length > 1) {
-        L.Routing.control({
-            waypoints: waypoints,
-            routeWhileDragging: false,
-            showAlternatives: false,
-            lineOptions: { styles: [{color: 'blue', opacity: 0.6, weight: 4}] },
-            createMarker: function() { return null; }, // We already added custom markers above
-            addWaypoints: false,
-            draggableWaypoints: false,
-            fitSelectedRoutes: true
-        }).addTo(map);
-    }
+    <script>
+        // 1. Initialize Map
+        var map = L.map('map').setView([9.9312, 76.2673], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-    // 4. Function to handle collection
-    function markCollected(binId) {
-        if(!confirm("Confirm you have emptied bin " + binId + "?")) return;
+        var binLocations = [];
+        {% for bin in bins %}
+            var lat = {{ bin.location_lat }};
+            var lon = {{ bin.location_lon }};
+            binLocations.push(L.latLng(lat, lon));
+            
+            L.circleMarker([lat, lon], {
+                color: 'red', radius: 10, fillOpacity: 0.8
+            }).addTo(map).bindPopup("<b>{{ bin.bin_id }}</b>");
+        {% endfor %}
 
-        fetch(`/api/collect_bin/${binId}`, { method: 'POST' })
-        .then(response => response.json())
-        .then(data => {
-            alert("Bin Collected! Removing from route...");
-            location.reload(); // Reloads page, backend filters out the empty bin
-        })
-        .catch(error => console.error('Error:', error));
-    }
-</script>
+        // 2. REAL GPS LOGIC
+        function startGPS() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        // Success
+                        var userLat = position.coords.latitude;
+                        var userLon = position.coords.longitude;
+                        var userLoc = L.latLng(userLat, userLon);
+
+                        document.getElementById('gps-status').innerHTML = "✅ GPS Connected";
+                        document.getElementById('gps-status').className = "alert alert-success py-1 small";
+
+                        // Show Truck Icon
+                        L.marker(userLoc).addTo(map).bindPopup("<b>🚛 You are here</b>").openPopup();
+
+                        // Draw Route on Internal Map (Overview)
+                        if (binLocations.length > 0) {
+                            L.Routing.control({
+                                waypoints: [userLoc].concat(binLocations),
+                                lineOptions: { styles: [{color: 'blue', opacity: 0.6, weight: 6}] },
+                                createMarker: function() { return null; },
+                                show: false // Hide text instructions (Use Google Maps button for that)
+                            }).addTo(map);
+                        }
+                    },
+                    (error) => {
+                        // Error
+                        document.getElementById('gps-status').innerHTML = "⚠️ GPS Denied. Using Default.";
+                        document.getElementById('gps-status').className = "alert alert-warning py-1 small";
+                        // Fallback
+                        L.marker([9.9312, 76.2673]).addTo(map).bindPopup("Default Location");
+                    }
+                );
+            } else {
+                alert("GPS not supported");
+            }
+        }
+
+        // 3. Mark Collected Logic
+        function markCollected(binId) {
+            if(confirm("Confirm collection for " + binId + "?")) {
+                fetch(`/api/collect_bin/${binId}`, { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    if(data.success) location.reload(); 
+                });
+            }
+        }
+
+        startGPS();
+    </script>
 </body>
 </html>

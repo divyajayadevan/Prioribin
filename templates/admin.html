@@ -5,7 +5,6 @@
     <title>Admin Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
 
@@ -13,7 +12,7 @@
     <div class="container">
         <a class="navbar-brand" href="/">Prioribin Admin</a>
         <div class="d-flex gap-2">
-            <a href="/collector" class="btn btn-outline-warning btn-sm" target="_blank">Open Collector View</a>
+            <a href="/collector" class="btn btn-warning btn-sm" target="_blank">👁️ Collector View</a>
             <a href="/" class="btn btn-outline-light btn-sm">Logout</a>
         </div>
     </div>
@@ -27,49 +26,66 @@
                 <h5>➕ Add New Bin</h5>
                 <form action="/add_bin" method="POST">
                     <input type="text" name="bin_id" class="form-control mb-2" placeholder="ID (e.g. BIN-01)" required>
-                    <input type="number" step="any" name="lat" class="form-control mb-2" placeholder="Latitude (e.g 9.93)" required>
-                    <input type="number" step="any" name="lon" class="form-control mb-2" placeholder="Longitude (e.g 76.26)" required>
+                    <input type="number" step="any" name="lat" class="form-control mb-2" placeholder="Latitude" required>
+                    <input type="number" step="any" name="lon" class="form-control mb-2" placeholder="Longitude" required>
                     <button type="submit" class="btn btn-primary w-100">Create Bin</button>
                 </form>
             </div>
+            
+            <!-- Map Preview -->
+             <div class="card shadow-sm">
+                <div class="card-header">Live Map</div>
+                <div id="map" style="height: 300px;"></div>
+             </div>
         </div>
 
-        <!-- Bin List with Manual Controls -->
+        <!-- Bin List -->
         <div class="col-md-8">
             <div class="card p-3 shadow-sm mb-4">
-                <h5>📡 Bin Status & Manual Controls</h5>
-                <p class="text-muted small">Use the slider to simulate fill levels. Only <b>Warning (70%+)</b> bins appear in Collector View.</p>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5>📡 Bin Status</h5>
+                    <button onclick="location.reload()" class="btn btn-sm btn-outline-secondary">🔄 Refresh Data</button>
+                </div>
+                
                 <div class="table-responsive">
-                    <table class="table align-middle">
-                        <thead>
+                    <table class="table align-middle table-hover">
+                        <thead class="table-light">
                             <tr>
                                 <th>Bin ID</th>
-                                <th>Status</th>
-                                <th>Simulate Fill Level</th>
+                                <th>Current Status</th>
+                                <th>Simulate Sensor</th>
                                 <th>Action</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for bin in bins %}
-                            <tr>
+                            <tr class="{{ 'table-danger' if bin.status == 'Critical' else '' }}">
                                 <td><strong>{{ bin.bin_id }}</strong></td>
                                 <td>
-                                    <span class="badge 
-                                        {% if bin.status == 'Critical' %}bg-danger
-                                        {% elif bin.status == 'Warning' %}bg-warning text-dark
-                                        {% else %}bg-success{% endif %}">
-                                        {{ bin.status }} ({{ bin.fill_level }}%)
-                                    </span>
+                                    <!-- Visual Logic for Status -->
+                                    {% if bin.fill_level == 0 %}
+                                        <span class="badge bg-success p-2">✅ CLEANED (0%)</span>
+                                    {% elif bin.status == 'Critical' %}
+                                        <span class="badge bg-danger p-2">🔥 CRITICAL ({{ bin.fill_level }}%)</span>
+                                    {% elif bin.status == 'Warning' %}
+                                        <span class="badge bg-warning text-dark p-2">⚠️ WARNING ({{ bin.fill_level }}%)</span>
+                                    {% else %}
+                                        <span class="badge bg-info text-dark">Normal ({{ bin.fill_level }}%)</span>
+                                    {% endif %}
                                 </td>
                                 <td>
-                                    <!-- Manual Simulator Form -->
-                                    <form action="/manual_update" method="POST" class="d-flex gap-2">
+                                    <form action="/manual_update" method="POST" class="d-flex gap-2 align-items-center">
                                         <input type="hidden" name="bin_id" value="{{ bin.bin_id }}">
-                                        <input type="range" name="fill_level" class="form-range" min="0" max="100" value="{{ bin.fill_level }}" oninput="this.nextElementSibling.value = this.value + '%'">
-                                        <output>{{ bin.fill_level }}%</output>
+                                        <input type="range" name="fill_level" class="form-range" style="width: 100px;" 
+                                               min="0" max="100" value="{{ bin.fill_level }}" 
+                                               oninput="this.nextElementSibling.value = this.value + '%'">
+                                        <output style="width: 40px; font-size: 0.9em;">{{ bin.fill_level }}%</output>
+                                        <button type="submit" class="btn btn-sm btn-outline-primary">Set</button>
+                                    </form>
                                 </td>
                                 <td>
-                                        <button type="submit" class="btn btn-sm btn-outline-primary">Update</button>
+                                    <form action="/delete_bin/{{ bin.bin_id }}" method="POST" onsubmit="return confirm('Delete this bin?');">
+                                        <button class="btn btn-sm btn-outline-danger">🗑️</button>
                                     </form>
                                 </td>
                             </tr>
@@ -78,11 +94,6 @@
                     </table>
                 </div>
             </div>
-            
-            <!-- Map Preview -->
-             <div class="card">
-                <div id="map" style="height: 300px;"></div>
-             </div>
         </div>
     </div>
 </div>
@@ -90,13 +101,13 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
     var map = L.map('map').setView([9.9312, 76.2673], 12);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
     {% for bin in bins %}
-        var color = "{{ 'red' if bin.status == 'Critical' else 'orange' if bin.status == 'Warning' else 'green' }}";
+        var color = "{{ 'red' if bin.status == 'Critical' else 'green' }}";
         L.circleMarker([{{ bin.location_lat }}, {{ bin.location_lon }}], {
             color: color, fillColor: color, fillOpacity: 0.8, radius: 8
-        }).addTo(map).bindPopup("<b>{{ bin.bin_id }}</b><br>Level: {{ bin.fill_level }}%");
+        }).addTo(map).bindPopup("<b>{{ bin.bin_id }}</b>");
     {% endfor %}
 </script>
 </body>
