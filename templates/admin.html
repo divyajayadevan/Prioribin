@@ -20,7 +20,7 @@
 
 <div class="container">
     <div class="row">
-        <!-- Add Bin Form -->
+        <!-- LEFT COLUMN: Add Bin Form & Map -->
         <div class="col-md-4">
             <div class="card p-3 mb-4 shadow-sm">
                 <h5>➕ Add New Bin</h5>
@@ -39,7 +39,7 @@
              </div>
         </div>
 
-        <!-- Bin List -->
+        <!-- RIGHT COLUMN: Bin List -->
         <div class="col-md-8">
             <div class="card p-3 shadow-sm mb-4">
                 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -58,6 +58,7 @@
                             </tr>
                         </thead>
                         <tbody>
+                            <!-- START OF THE LOOP: "bin" is defined here -->
                             {% for bin in bins %}
                             <tr class="{{ 'table-danger' if bin.status == 'Critical' else '' }}">
                                 <td><strong>{{ bin.bin_id }}</strong></td>
@@ -83,13 +84,15 @@
                                         <button type="submit" class="btn btn-sm btn-outline-primary">Set</button>
                                     </form>
                                 </td>
+                                <!-- THIS IS THE DELETE BUTTON AREA -->
                                 <td>
-                                    <form action="/delete_bin/{{ bin.bin_id }}" method="POST" onsubmit="return confirm('Delete this bin?');">
-                                        <button class="btn btn-sm btn-outline-danger">🗑️</button>
+                                    <form action="/delete_bin/{{ bin.bin_id }}" method="POST" onsubmit="return confirm('Delete {{ bin.bin_id }}?');">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">🗑️</button>
                                     </form>
                                 </td>
                             </tr>
                             {% endfor %}
+                            <!-- END OF THE LOOP: "bin" stops existing here -->
                         </tbody>
                     </table>
                 </div>
@@ -103,6 +106,7 @@
     var map = L.map('map').setView([9.9312, 76.2673], 12);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
+    // IMPORTANT: This loop is required for the map pins to work!
     {% for bin in bins %}
         var color = "{{ 'red' if bin.status == 'Critical' else 'green' }}";
         L.circleMarker([{{ bin.location_lat }}, {{ bin.location_lon }}], {

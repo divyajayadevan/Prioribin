@@ -11,6 +11,7 @@ app.config['SECRET_KEY'] = 'dev'
 
 db.init_app(app)
 
+# Create DB if not exists
 with app.app_context():
     try:
         os.makedirs(app.instance_path)
@@ -55,6 +56,16 @@ def add_bin():
             db.session.commit()
     return redirect(url_for('admin_dashboard'))
 
+# --- THIS IS THE MISSING ROUTE THAT FIXES YOUR ERROR ---
+@app.route('/delete_bin/<bin_id>', methods=['POST'])
+def delete_bin(bin_id):
+    bin_obj = WasteBin.query.filter_by(bin_id=bin_id).first()
+    if bin_obj:
+        db.session.delete(bin_obj)
+        db.session.commit()
+    return redirect(url_for('admin_dashboard'))
+# -----------------------------------------------------
+
 @app.route('/manual_update', methods=['POST'])
 def manual_update():
     """Allows Admin to manually set fill level for testing"""
@@ -63,8 +74,10 @@ def manual_update():
     
     bin_obj = WasteBin.query.filter_by(bin_id=bin_id).first()
     if bin_obj and fill_level:
-        bin_obj.fill_level = int(fill_level)
-        bin_obj.status = calculate_status(int(fill_level))
+        # Handle string input (e.g., remove '%' if present)
+        level = int(str(fill_level).replace('%', ''))
+        bin_obj.fill_level = level
+        bin_obj.status = calculate_status(level)
         db.session.commit()
         
     return redirect(url_for('admin_dashboard'))
@@ -90,7 +103,7 @@ def collect_bin(bin_id):
         bin_obj.fill_level = 0
         bin_obj.status = "Normal"
         db.session.commit()
-        return jsonify({"message": f"{bin_id} Collected & Reset", "id": bin_id}), 200
+        return jsonify({"success": True, "message": f"{bin_id} Reset", "id": bin_id}), 200
     return jsonify({"error": "Bin not found"}), 404
 
 if __name__ == '__main__':
