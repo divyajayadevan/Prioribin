@@ -21,3 +21,20 @@ class WasteBin(db.Model):
             "status": self.status,
             "last_updated": self.last_updated.strftime("%Y-%m-%d %H:%M:%S")
         }
+
+# --- NEW CLASS FOR HISTORY ---
+class BinHistory(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    bin_id = db.Column(db.String(50), nullable=False)
+    event_type = db.Column(db.String(50), nullable=False) # e.g., "Critical Alert", "Collection"
+    description = db.Column(db.String(200))
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "bin_id": self.bin_id,
+            "event_type": self.event_type,
+            "description": self.description,
+            "timestamp": self.timestamp.strftime("%Y-%m-%d %H:%M:%S")
+        }

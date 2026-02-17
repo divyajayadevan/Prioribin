@@ -90,6 +90,19 @@
                                         <button type="submit" class="btn btn-sm btn-outline-danger">🗑️</button>
                                     </form>
                                 </td>
+                                <td>
+                                    <div class="d-flex gap-2">
+                                        <!-- New History Button -->
+                                        <a href="/history/{{ bin.bin_id }}" class="btn btn-sm btn-outline-info" title="View History">
+                                            📜 History
+                                        </a>
+
+                                        <!-- Existing Delete Button -->
+                                        <form action="/delete_bin/{{ bin.bin_id }}" method="POST" onsubmit="return confirm('Delete {{ bin.bin_id }}?');">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">🗑️</button>
+                                        </form>
+                                    </div>
+                                </td>
                             </tr>
                             {% endfor %}
                             <!-- END OF THE LOOP: "bin" stops existing here -->
