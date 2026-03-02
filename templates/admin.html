@@ -3,14 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <title>Admin Dashboard</title>
+    <!-- Auto-refresh page every 5 seconds to see Simulator changes -->
+    <meta http-equiv="refresh" content="5">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 </head>
-<body>
+<body class="bg-light">
 
-<nav class="navbar navbar-dark bg-dark mb-4">
-    <div class="container">
-        <a class="navbar-brand" href="/">Prioribin Admin</a>
+<nav class="navbar navbar-dark bg-dark mb-4 shadow">
+    <div class="container-fluid px-4">
+        <a class="navbar-brand fw-bold" href="/">Prioribin Admin</a>
         <div class="d-flex gap-2">
             <a href="/collector_login" class="btn btn-warning btn-sm" target="_blank">🚛 Collector View</a>
             <a href="/" class="btn btn-outline-light btn-sm">Logout</a>
@@ -18,76 +20,98 @@
     </div>
 </nav>
 
-<div class="container">
-    <div class="row">
-        <!-- Add Bin Form & Map -->
-        <div class="col-md-4">
-            <div class="card p-3 mb-4 shadow-sm">
-                <h5>➕ Add New Bin</h5>
-                <form action="/add_bin" method="POST">
-                    <input type="text" name="bin_id" class="form-control mb-2" placeholder="ID (e.g. BIN-01)" required>
-                    <input type="number" step="any" name="lat" class="form-control mb-2" placeholder="Latitude" required>
-                    <input type="number" step="any" name="lon" class="form-control mb-2" placeholder="Longitude" required>
-                    <button type="submit" class="btn btn-primary w-100">Create Bin</button>
-                </form>
+<div class="container-fluid px-4">
+    <div class="row g-4">
+        
+        <!-- LEFT COLUMN: Map & Add Bin -->
+        <div class="col-lg-4">
+            <!-- Add Bin Card -->
+            <div class="card shadow-sm mb-4 border-0">
+                <div class="card-header bg-primary text-white fw-bold">➕ Add New Bin</div>
+                <div class="card-body">
+                    <form action="/add_bin" method="POST">
+                        <div class="input-group mb-2">
+                            <span class="input-group-text">ID</span>
+                            <input type="text" name="bin_id" class="form-control" placeholder="e.g. BIN-01" required>
+                        </div>
+                        <div class="row g-2">
+                            <div class="col">
+                                <input type="number" step="any" name="lat" class="form-control" placeholder="Lat" required>
+                            </div>
+                            <div class="col">
+                                <input type="number" step="any" name="lon" class="form-control" placeholder="Lon" required>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 mt-2">Create Bin</button>
+                    </form>
+                </div>
             </div>
-            
-             <div class="card shadow-sm">
-                <div class="card-header bg-success text-white">Live Tracking Map</div>
-                <div id="map" style="height: 350px;"></div>
-                <div class="card-footer small text-muted">🔴 Bins | 🔵 Collectors (Trucks)</div>
+
+            <!-- Live Map Card -->
+             <div class="card shadow-sm border-0">
+                <div class="card-header bg-dark text-white fw-bold d-flex justify-content-between">
+                    <span>🗺️ Live Tracking</span>
+                    <span class="badge bg-secondary">Auto-Updating</span>
+                </div>
+                <div id="map" style="height: 400px;"></div>
+                <div class="card-footer small text-muted text-center">
+                    🔴 Bins | 🔵 Moving Collectors
+                </div>
              </div>
         </div>
 
-        <!-- Bin List -->
-        <div class="col-md-8">
-            <div class="card p-3 shadow-sm mb-4">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h5>📡 Bin Status</h5>
-                    <button onclick="location.reload()" class="btn btn-sm btn-outline-secondary">🔄 Refresh Data</button>
-                </div>
-                <div class="table-responsive">
-                    <table class="table align-middle table-hover">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Bin ID</th>
-                                <th>Status</th>
-                                <th>Simulate</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for bin in bins %}
-                            <tr class="{{ 'table-danger' if bin.status == 'Critical' else '' }}">
-                                <td><strong>{{ bin.bin_id }}</strong></td>
-                                <td>
-                                    {% if bin.fill_level == 0 %}<span class="badge bg-success p-2">✅ CLEANED</span>
-                                    {% elif bin.status == 'Critical' %}<span class="badge bg-danger p-2">🔥 CRITICAL ({{ bin.fill_level }}%)</span>
-                                    {% elif bin.status == 'Warning' %}<span class="badge bg-warning text-dark p-2">⚠️ WARNING ({{ bin.fill_level }}%)</span>
-                                    {% else %}<span class="badge bg-info text-dark">Normal ({{ bin.fill_level }}%)</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    <form action="/manual_update" method="POST" class="d-flex gap-2 align-items-center">
-                                        <input type="hidden" name="bin_id" value="{{ bin.bin_id }}">
-                                        <input type="range" name="fill_level" class="form-range" style="width: 100px;" min="0" max="100" value="{{ bin.fill_level }}" oninput="this.nextElementSibling.value = this.value + '%'">
-                                        <output style="width: 40px; font-size: 0.9em;">{{ bin.fill_level }}%</output>
-                                        <button type="submit" class="btn btn-sm btn-outline-primary">Set</button>
-                                    </form>
-                                </td>
-                                <td>
-                                    <div class="d-flex gap-2">
-                                        <a href="/history/{{ bin.bin_id }}" class="btn btn-sm btn-outline-info" title="History">📜</a>
-                                        <form action="/delete_bin/{{ bin.bin_id }}" method="POST" onsubmit="return confirm('Delete?');">
-                                            <button type="submit" class="btn btn-sm btn-outline-danger">🗑️</button>
-                                        </form>
-                                    </div>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+        <!-- RIGHT COLUMN: Bin Cards Grid -->
+        <div class="col-lg-8">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="fw-bold text-secondary">📡 Bin Status Overview</h4>
+                <span class="badge bg-info text-dark">Receiving Simulator Data...</span>
+            </div>
+
+            <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3">
+                
+                {% for bin in bins %}
+                    <!-- Logic to determine Color -->
+                    {% set status_color = 'success' %}
+                    {% if bin.status == 'Critical' %}
+                        {% set status_color = 'danger' %}
+                    {% elif bin.status == 'Warning' %}
+                        {% set status_color = 'warning' %}
+                    {% endif %}
+
+                    <div class="col">
+                        <div class="card h-100 shadow-sm border-{{ status_color }}">
+                            <div class="card-header bg-{{ status_color }} bg-opacity-10 fw-bold d-flex justify-content-between align-items-center">
+                                <span class="text-{{ status_color }}">🗑️ {{ bin.bin_id }}</span>
+                                <span class="badge bg-{{ status_color }}">{{ bin.status }}</span>
+                            </div>
+                            
+                            <div class="card-body text-center">
+                                <h1 class="display-4 fw-bold text-{{ status_color }} mb-0">{{ bin.fill_level }}%</h1>
+                                <small class="text-muted">Current Capacity</small>
+
+                                <!-- Progress Bar -->
+                                <div class="progress mt-3" style="height: 10px;">
+                                    <div class="progress-bar bg-{{ status_color }}" role="progressbar" 
+                                         style="width: {{ bin.fill_level }}%"></div>
+                                </div>
+                            </div>
+
+                            <div class="card-footer bg-white border-top-0 d-flex justify-content-between">
+                                <a href="/history/{{ bin.bin_id }}" class="btn btn-sm btn-outline-secondary w-50 me-1">📜 History</a>
+                                
+                                <form action="/delete_bin/{{ bin.bin_id }}" method="POST" class="w-50 ms-1" onsubmit="return confirm('Delete {{ bin.bin_id }}?');">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger w-100">🗑️ Delete</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="col-12 text-center text-muted py-5">
+                        <h4>No Bins Found</h4>
+                        <p>Add a bin on the left to start monitoring.</p>
+                    </div>
+                {% endfor %}
+
             </div>
         </div>
     </div>
@@ -98,42 +122,29 @@
     var map = L.map('map').setView([9.9312, 76.2673], 12);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-    // Draw Bins
+    // Bins
     {% for bin in bins %}
         var color = "{{ 'red' if bin.status == 'Critical' else 'green' }}";
         L.circleMarker([{{ bin.location_lat }}, {{ bin.location_lon }}], {
-            color: color, fillColor: color, fillOpacity: 0.8, radius: 6
+            color: color, fillColor: color, fillOpacity: 0.8, radius: 8
         }).addTo(map).bindPopup("<b>{{ bin.bin_id }}</b><br>Level: {{ bin.fill_level }}%");
     {% endfor %}
 
-    // --- LIVE COLLECTOR TRACKING ---
-    var collectorMarkers = {};
-
+    // Collectors (Live fetch logic)
     function updateCollectors() {
         fetch('/api/get_collectors')
             .then(res => res.json())
             .then(data => {
-                // Remove old markers that are no longer in the list (drivers went offline)
-                // (For simplicity in this version, we just add/move markers)
-                
+                // (Simple logic: clear and redraw for this demo, or just add markers)
                 data.forEach(driver => {
                     if (driver.lat && driver.lon) {
-                        if (collectorMarkers[driver.name]) {
-                            // Move existing marker
-                            collectorMarkers[driver.name].setLatLng([driver.lat, driver.lon]);
-                        } else {
-                            // Create new Blue marker for Truck
-                            var marker = L.circleMarker([driver.lat, driver.lon], {
-                                color: 'blue', fillColor: '#007bff', fillOpacity: 1, radius: 8
-                            }).addTo(map).bindPopup(`🚛 <b>${driver.name}</b><br>Active`);
-                            collectorMarkers[driver.name] = marker;
-                        }
+                        L.circleMarker([driver.lat, driver.lon], {
+                            color: 'blue', fillColor: '#007bff', fillOpacity: 1, radius: 8
+                        }).addTo(map).bindPopup(`🚛 <b>${driver.name}</b>`);
                     }
                 });
             });
     }
-
-    // Update every 3 seconds
     setInterval(updateCollectors, 3000);
     updateCollectors();
 </script>

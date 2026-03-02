@@ -4,44 +4,57 @@ import random
 
 # --- CONFIGURATION ---
 SERVER_URL = 'http://127.0.0.1:5000/api/update_bin'
-BIN_ID = "BIN-01"  # <--- IMPORTANT: Make sure this matches the ID you added in Admin Dashboard
+# We are simulating 3 separate hardware units
+BINS = ["BIN-01", "BIN-02", "BIN-03"]
 
-print(f"Starting Hardware Simulation for {BIN_ID}...")
-print("Press Ctrl+C to stop.")
+print("----------------------------------------")
+print("🚀 Starting Hardware Simulation (3 Bins)")
+print("----------------------------------------\n")
 
 try:
     while True:
-        # 1. Simulate Sensor Reading
-        # We generate a random number.
-        # Sometimes we force it high to test the "Critical" status logic.
-        simulated_distance = random.randint(0, 100)
-        
-        # Let's bias it towards being full so you can see the red alert faster
-        if random.random() > 0.7: 
-            simulated_distance = random.randint(80, 100) # High fill level
-
-        # 2. Prepare Data Packet (JSON)
-        payload = {
-            "bin_id": BIN_ID,
-            "fill_level": simulated_distance
-        }
-        
-        # 3. Send to Server (HTTP POST)
-        try:
-            response = requests.post(SERVER_URL, json=payload)
+        # Loop through each bin to simulate them one by one
+        for bin_id in BINS:
             
-            if response.status_code == 200:
-                print(f"✅ Sent: {simulated_distance}% | Server Reply: {response.json()['priority']}")
-            elif response.status_code == 404:
-                print(f"❌ Error: Bin ID '{BIN_ID}' not found on Server. Add it in Admin Dashboard first!")
-            else:
-                print(f"⚠️ Server Error: {response.status_code}")
-                
-        except requests.exceptions.ConnectionError:
-            print("❌ Could not connect to server. Is app.py running?")
+            # 1. Generate Random Fill Level (0 to 100%)
+            # We bias it slightly higher so you see more alerts for testing
+            fill_level = random.randint(0, 100)
+            
+            # 2. PRINT OUTPUT (Matching your screenshot style)
+            print("-" * 40)
+            
+            # Simulate the "Sensor error" message occasionally (e.g., if level is very low)
+            if fill_level < 5:
+                print("Sensor error or bin empty")
 
-        # 4. Wait before next reading
-        time.sleep(3) # Send data every 3 seconds
+            print(f"Bin: {bin_id}")
+            print(f"Fill Level: {fill_level}%")
+
+            # Logic for the status messages
+            if fill_level >= 90:
+                print("🚨 CRITICAL: Immediate collection required")
+            elif fill_level >= 70:
+                print("⚠️  WARNING: Schedule collection soon")
+            else:
+                print("✅ Status normal")
+
+            # 3. Send Data to Flask Server
+            payload = {
+                "bin_id": bin_id,
+                "fill_level": fill_level
+            }
+
+            try:
+                requests.post(SERVER_URL, json=payload, timeout=1)
+            except requests.exceptions.ConnectionError:
+                print("❌ [Network Error] Could not reach server.")
+
+            # Short pause between bins to make it readable
+            time.sleep(2)
+
+        # Wait a few seconds before checking all bins again
+        print("\n... Cycling sensors ...\n")
+        time.sleep(4)
 
 except KeyboardInterrupt:
     print("\nSimulation Stopped.")
