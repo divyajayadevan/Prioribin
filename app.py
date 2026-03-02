@@ -93,19 +93,10 @@ def delete_bin(bin_id):
         db.session.commit()
     return redirect(url_for('admin_dashboard'))
 
-@app.route('/manual_update', methods=['POST'])
-def manual_update():
-    bin_id = request.form.get('bin_id')
-    fill_level = int(request.form.get('fill_level').replace('%', ''))
-    bin_obj = WasteBin.query.filter_by(bin_id=bin_id).first()
-    if bin_obj:
-        new_status = calculate_status(fill_level)
-        if bin_obj.status != "Critical" and new_status == "Critical":
-            log_event(bin_id, "Critical Alert", f"Manual override: {fill_level}%")
-        bin_obj.fill_level = fill_level
-        bin_obj.status = new_status
-        db.session.commit()
-    return redirect(url_for('admin_dashboard'))
+
+
+
+
 
 # --- API Endpoints for Tracking ---
 
