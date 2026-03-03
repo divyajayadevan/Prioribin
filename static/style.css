@@ -1,0 +1,140 @@
+/* Modern Design System for Prioribin */
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+
+:root {
+    /* Color Palette */
+    --primary: #4F46E5; /* Indigo 600 */
+    --primary-hover: #4338CA; /* Indigo 700 */
+    --primary-light: #EEF2FF; /* Indigo 50 */
+    
+    --success: #10B981; /* Emerald 500 */
+    --success-light: #D1FAE5; /* Emerald 50 */
+    
+    --danger: #F43F5E; /* Rose 500 */
+    --danger-light: #FFE4E6; /* Rose 50 */
+    
+    --warning: #F59E0B; /* Amber 500 */
+    --warning-light: #FEF3C7; /* Amber 50 */
+    
+    --dark: #1E293B; /* Slate 800 */
+    --text-main: #334155; /* Slate 700 */
+    --text-muted: #64748B; /* Slate 500 */
+    
+    --bg-main: #F8FAFC; /* Slate 50 */
+    --bg-card: #FFFFFF;
+    
+    /* Layout & Shadows */
+    --radius-sm: 0.5rem;
+    --radius-md: 1rem;
+    --radius-lg: 1.5rem;
+    
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+    
+    --glass-bg: rgba(255, 255, 255, 0.85);
+    --glass-border: rgba(255, 255, 255, 0.2);
+}
+
+body {
+    font-family: 'Outfit', sans-serif;
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: #CBD5E1;
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #94A3B8;
+}
+
+/* Utilities */
+.glass-panel {
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+}
+
+.shadow-soft {
+    box-shadow: var(--shadow-md);
+}
+
+.shadow-hover {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.shadow-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-xl);
+}
+
+.rounded-card {
+    border-radius: var(--radius-md);
+}
+
+/* Typography Overrides */
+h1, h2, h3, h4, h5, h6 {
+    color: var(--dark);
+    font-weight: 600;
+}
+
+/* Base Buttons */
+.btn {
+    border-radius: var(--radius-sm);
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+    transition: all 0.2s;
+    letter-spacing: 0.01em;
+}
+
+.btn-primary {
+    background-color: var(--primary);
+    border-color: var(--primary);
+}
+.btn-primary:hover {
+    background-color: var(--primary-hover);
+    border-color: var(--primary-hover);
+}
+
+/* Cards */
+.card {
+    border: none;
+    border-radius: var(--radius-md);
+    background: var(--bg-card);
+    transition: all 0.3s ease;
+}
+.card-header {
+    background-color: transparent;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+.card-footer {
+    background-color: transparent;
+    border-top: 1px solid rgba(0,0,0,0.05);
+}
+
+/* Form Controls */
+.form-control, .input-group-text {
+    border-radius: var(--radius-sm);
+    border: 1px solid #E2E8F0;
+    padding: 0.6rem 1rem;
+}
+.form-control:focus {
+    box-shadow: 0 0 0 3px var(--primary-light);
+    border-color: var(--primary);
+}
+.input-group-text {
+    background-color: #F8FAFC;
+    color: var(--text-muted);
+}

@@ -3,58 +3,93 @@ import time
 import random
 
 # --- CONFIGURATION ---
-SERVER_URL = 'http://127.0.0.1:5000/api/update_bin'
-# We are simulating 3 separate hardware units
-BINS = ["BIN-01", "BIN-02", "BIN-03"]
+BASE_URL = 'http://127.0.0.1:5000'
+UPDATE_URL = f'{BASE_URL}/api/update_bin'
+GET_BINS_URL = f'{BASE_URL}/api/get_all_bins'
 
-print("----------------------------------------")
-print("🚀 Starting Hardware Simulation (3 Bins)")
-print("----------------------------------------\n")
+def get_registered_bins():
+    """Fetches real bins from the Admin Dashboard"""
+    try:
+        response = requests.get(GET_BINS_URL)
+        if response.status_code == 200:
+            return response.json() # Returns list of bins
+    except:
+        return []
+    return []
+
+print("----------------------------------------------------------------")
+print("🚀 PRIORIBIN: Edge Intelligence Simulator (Event-Triggered)")
+print("----------------------------------------------------------------")
+print("Waiting for server...")
+
+# Local memory to track previous state (simulating Edge memory)
+bin_states = {}
 
 try:
     while True:
-        # Loop through each bin to simulate them one by one
-        for bin_id in BINS:
-            
-            # 1. Generate Random Fill Level (0 to 100%)
-            # We bias it slightly higher so you see more alerts for testing
-            fill_level = random.randint(0, 100)
-            
-            # 2. PRINT OUTPUT (Matching your screenshot style)
-            print("-" * 40)
-            
-            # Simulate the "Sensor error" message occasionally (e.g., if level is very low)
-            if fill_level < 5:
-                print("Sensor error or bin empty")
+        # 1. Fetch Active Bins from Server
+        # We check this every loop so if you add a new bin in Admin, it appears here automatically.
+        active_bins = get_registered_bins()
+        
+        if not active_bins:
+            print("⚠️  No bins found in system. Please add a bin in Admin Dashboard.")
+            time.sleep(5)
+            continue
 
-            print(f"Bin: {bin_id}")
-            print(f"Fill Level: {fill_level}%")
+        for bin_data in active_bins:
+            b_id = bin_data['bin_id']
+            server_fill_level = bin_data['fill_level'] # The level currently in DB
+            
+            # Initialize local state if new
+            if b_id not in bin_states:
+                bin_states[b_id] = server_fill_level
 
-            # Logic for the status messages
-            if fill_level >= 90:
-                print("🚨 CRITICAL: Immediate collection required")
-            elif fill_level >= 70:
-                print("⚠️  WARNING: Schedule collection soon")
+            # 2. LOGIC: Check if Collector emptied it
+            # If server says 0 but we thought it was 100, the collector cleaned it!
+            if server_fill_level == 0 and bin_states[b_id] > 0:
+                print(f"♻️  [EVENT] {b_id} was emptied by Collector. Resetting Edge Sensor.")
+                bin_states[b_id] = 0
+            
+            # 3. LOGIC: Simulate Waste Accumulation
+            current_level = bin_states[b_id]
+
+            if current_level >= 100:
+                # Bin is full. It CANNOT go down unless collected.
+                new_level = 100
+                status_msg = "🚨 CRITICAL: OVERFLOW DETECTED"
             else:
-                print("✅ Status normal")
+                # Simulate people throwing trash (random increase 5% to 15%)
+                increase = random.randint(5, 15)
+                new_level = min(current_level + increase, 100) # Cap at 100
+                status_msg = "✅ Monitoring... (Filling Up)"
 
-            # 3. Send Data to Flask Server
-            payload = {
-                "bin_id": bin_id,
-                "fill_level": fill_level
-            }
+            # Update local memory
+            bin_states[b_id] = new_level
 
+            # 4. OUTPUT (Matches PDF concept of Edge Processing)
+            print("-" * 50)
+            print(f"📦 BIN ID: {b_id}")
+            print(f"   Sensor Reading: {new_level} cm (converted to %)")
+            
+            if new_level >= 90:
+                print("   [EDGE LOGIC] 🛑 Threshold Exceeded -> PRIORITY HIGH")
+                print("   STATUS: CRITICAL (Needs Collector)")
+            elif new_level >= 70:
+                print("   [EDGE LOGIC] ⚠️ Threshold Approaching -> PRIORITY MED")
+            else:
+                print(f"   [EDGE LOGIC] Normal accumulation (+{new_level - current_level if new_level>current_level else 0}%)")
+
+            # 5. Send to Server (Only if changed or critical to keep heartbeat)
+            payload = {"bin_id": b_id, "fill_level": new_level}
             try:
-                requests.post(SERVER_URL, json=payload, timeout=1)
-            except requests.exceptions.ConnectionError:
-                print("❌ [Network Error] Could not reach server.")
+                requests.post(UPDATE_URL, json=payload, timeout=1)
+            except:
+                print("   ❌ Network Error: Server Offline")
 
-            # Short pause between bins to make it readable
-            time.sleep(2)
+            time.sleep(1) # Short pause between bins
 
-        # Wait a few seconds before checking all bins again
-        print("\n... Cycling sensors ...\n")
-        time.sleep(4)
+        print("\n⏳ Cycle complete. Waiting for next sensor reading...\n")
+        time.sleep(4) # Wait 4 seconds before next batch
 
 except KeyboardInterrupt:
-    print("\nSimulation Stopped.")
+    print("\n🛑 Simulation Stopped.")

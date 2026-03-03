@@ -157,5 +157,14 @@ def collect_bin(bin_id):
         return jsonify({"success": True}), 200
     return jsonify({"error": "Bin not found"}), 404
 
+# --- ADD THIS TO app.py ---
+
+@app.route('/api/get_all_bins', methods=['GET'])
+def get_all_bins():
+    """Helper for Simulator to know which bins exist"""
+    bins = WasteBin.query.all()
+    # Convert list of objects to list of dictionaries
+    return jsonify([b.to_dict() for b in bins])
+
 if __name__ == '__main__':
     app.run(debug=True)
