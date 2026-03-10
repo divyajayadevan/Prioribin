@@ -4,7 +4,7 @@
 ![Flask](https://img.shields.io/badge/Flask-2.x-000000?style=for-the-badge&logo=flask&logoColor=white)
 ![SQLite](https://img.shields.io/badge/SQLite-Database-003B57?style=for-the-badge&logo=sqlite&logoColor=white)
 ![Leaflet](https://img.shields.io/badge/Leaflet.js-Maps-199900?style=for-the-badge&logo=leaflet&logoColor=white)
-![License](https://img.shields.io/badge/License-Apache-2.0-10b981?style=for-the-badge)
+![License](https://img.shields.io/badge/License-Apache_2.0-10b981?style=for-the-badge)
 
 **Prioribin** is an intelligent, priority-based waste management system that uses edge-simulated IoT sensors, real-time interactive mapping, and dynamic route optimization to revolutionize how facilities handle waste collection.
 
