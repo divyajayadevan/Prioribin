@@ -3,7 +3,7 @@ import time
 import random
 import argparse
 
-# --- CONFIGURATION ---
+
 parser = argparse.ArgumentParser(description="Prioribin Edge Intelligence Simulator")
 parser.add_argument("--url", type=str, default="http://127.0.0.1:5000", help="Base URL of the Prioribin Server")
 args = parser.parse_args()
@@ -17,7 +17,7 @@ def get_registered_bins():
     try:
         response = requests.get(GET_BINS_URL)
         if response.status_code == 200:
-            return response.json() # Returns list of bins
+            return response.json()
     except:
         return []
     return []
@@ -27,13 +27,13 @@ print("🚀 PRIORIBIN: Edge Intelligence Simulator (Event-Triggered)")
 print("----------------------------------------------------------------")
 print("Waiting for server...")
 
-# Local memory to track previous state (simulating Edge memory)
+
 bin_states = {}
 
 try:
     while True:
         # 1. Fetch Active Bins from Server
-        # We check this every loop so if you add a new bin in Admin, it appears here automatically.
+        
         active_bins = get_registered_bins()
         
         if not active_bins:
@@ -41,27 +41,26 @@ try:
             time.sleep(15)
             continue
 
-        # Hardware bins! These are completely ignored by the simulator.
-        # Any other bin ID you create in the Admin Dashboard will automatically get simulated.
+        
         IGNORED_BINS = ["BIN-01", "BIN-02"]
 
         simulated_count = 0
         for bin_data in active_bins:
             b_id = bin_data['bin_id']
             
-            # Skip any bin that is reserved for real physical hardware
+            
             if b_id in IGNORED_BINS:
                 continue
                 
             simulated_count += 1
-            server_fill_level = bin_data['fill_level'] # The level currently in DB
+            server_fill_level = bin_data['fill_level'] 
             
-            # Initialize local state if new
+            
             if b_id not in bin_states:
                 bin_states[b_id] = server_fill_level
 
             # 2. LOGIC: Check if Collector emptied it
-            # If server says 0 but we thought it was 100, the collector cleaned it!
+            # If server says 0 but we thought it was 100, the collector cleaned it
             if server_fill_level == 0 and bin_states[b_id] > 0:
                 print(f"♻️  [EVENT] {b_id} was emptied by Collector. Resetting Edge Sensor.")
                 bin_states[b_id] = 0
@@ -102,7 +101,7 @@ try:
             except:
                 print("   ❌ Network Error: Server Offline")
 
-            time.sleep(1) # Short pause between bins
+            time.sleep(1)
 
         print("\n⏳ Cycle complete. Waiting for next sensor reading...\n")
         time.sleep(15) # Wait 15 seconds before next batch
