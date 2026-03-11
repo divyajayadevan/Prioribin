@@ -28,28 +28,28 @@
 ## Technology Stack
 
 ### Backend
-- **Python** — Core application logic and scripting
-- **Flask** — Lightweight web framework for routing and REST APIs
-- **Flask-SQLAlchemy** — ORM for clean, Pythonic database interactions
-- **SQLite** — Serverless, zero-config database stored in a single file
-- **Werkzeug** — Password hashing for secure collector authentication
+- **Python** — Core application logic and scripting.
+- **Flask** — Lightweight web framework for routing and REST APIs.
+- **Flask-SQLAlchemy** — ORM for clean, Pythonic database interactions.
+- **SQLite** — Serverless, zero-config database stored in a single file.
+- **Werkzeug** — Password hashing for secure collector authentication.
 
 ### Frontend
-- **HTML5 & Jinja2** — Server-side templating with dynamic data injection
-- **Vanilla CSS** — Custom styling with CSS variables, animations, and responsive design
-- **JavaScript (ES6)** — Asynchronous data fetching, real-time UI updates, and scroll interactions
+- **HTML5 & Jinja2** — Server-side templating with dynamic data injection.
+- **Vanilla CSS** — Custom styling with CSS variables, animations, and responsive design.
+- **JavaScript (ES6)** — Asynchronous data fetching, real-time UI updates, and scroll interactions.
 
 ### Mapping & Navigation
-- **Leaflet.js** — Open-source interactive maps for bin and collector visualization
-- **Leaflet-Routing-Machine** — Turn-by-turn route calculation for collector navigation
+- **Leaflet.js** — Open-source interactive maps for bin and collector visualization.
+- **Leaflet-Routing-Machine** — Turn-by-turn route calculation for collector navigation.
 
 ### Analytics & Simulation
-- **Chart.js** — Client-side rendering of historical bin data into line graphs
-- **Python `requests`** — Simulates HTTPS POST payloads identical to real ESP32/Raspberry Pi sensors
+- **Chart.js** — Client-side rendering of historical bin data into line graphs.
+- **Python `requests`** — Simulates HTTPS POST payloads identical to real ESP32/Raspberry Pi sensors.
 
 ### Deployment
-- **PythonAnywhere** — Cloud hosting optimized for Python web applications
-- **Git & GitHub** — Version control and code deployment pipeline
+- **PythonAnywhere** — Cloud hosting optimized for Python web applications.
+- **Git & GitHub** — Version control and code deployment pipeline.
 
 ---
 
