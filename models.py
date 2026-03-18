@@ -30,6 +30,30 @@ class BinHistory(db.Model):
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
 from werkzeug.security import generate_password_hash, check_password_hash
+import re
+
+def validate_password_policy(password):
+    prefix = "The password is not in the right format. "
+    if len(password) < 8:
+        return False, prefix + "It must be at least 8 characters long."
+    if not re.search(r"[a-z]", password):
+        return False, prefix + "It must contain at least one lowercase letter."
+    if not re.search(r"[A-Z]", password):
+        return False, prefix + "It must contain at least one uppercase letter."
+    if not re.search(r"[!@#$%^&*(),.?\":{}|<>\-_+=\[\]\\/']", password):
+        return False, prefix + "It must contain at least one special character."
+    return True, ""
+
+class Admin(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(50), unique=True, nullable=False)
+    password_hash = db.Column(db.String(255), nullable=False)
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
 
 # --- NEW TABLE FOR TRACKING COLLECTORS ---
 class Collector(db.Model):
