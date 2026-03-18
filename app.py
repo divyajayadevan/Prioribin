@@ -1,7 +1,7 @@
 import os
 from datetime import datetime, timedelta
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, flash
-from models import db, WasteBin, BinHistory, Collector
+from models import db, WasteBin, BinHistory, Collector, Admin, validate_password_policy
 
 app = Flask(__name__, instance_relative_config=True)
 
@@ -18,6 +18,13 @@ with app.app_context():
     except OSError:
         pass
     db.create_all()
+
+    # Create default admin if not exists
+    if not Admin.query.filter_by(username='admin').first():
+        default_admin = Admin(username='admin')
+        default_admin.set_password('Admin@123!')
+        db.session.add(default_admin)
+        db.session.commit()
 
 # --- Logic ---
 def calculate_status(fill_level):
@@ -39,8 +46,33 @@ def log_event(bin_id, event_type, description, collector_name=None):
 def home():
     return render_template('home.html')
 
+@app.route('/admin_login', methods=['GET', 'POST'])
+def admin_login():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        
+        admin = Admin.query.filter_by(username=username).first()
+        if admin and admin.check_password(password):
+            session['admin_id'] = admin.id
+            session['admin_username'] = admin.username
+            return redirect(url_for('admin_dashboard'))
+        else:
+            flash('The password is not right.', 'error')
+            
+    return render_template('admin_login.html')
+
+@app.route('/admin_logout')
+def admin_logout():
+    session.pop('admin_id', None)
+    session.pop('admin_username', None)
+    return redirect(url_for('home'))
+
 @app.route('/admin')
 def admin_dashboard():
+    if 'admin_id' not in session:
+        return redirect(url_for('admin_login'))
+        
     bins = WasteBin.query.order_by(WasteBin.fill_level.desc()).all()
     # Fetch active collectors for the new UI
     cutoff = datetime.utcnow() - timedelta(minutes=5)
@@ -85,7 +117,7 @@ def collector_login():
             db.session.commit()
             return redirect(url_for('collector_dashboard'))
         else:
-            flash('Invalid username or password', 'error')
+            flash('The password is not right.', 'error')
             
     return render_template('collector_login.html')
 
@@ -110,8 +142,35 @@ def collector_dashboard():
     all_bins = WasteBin.query.all()
     return render_template('collector.html', bins=all_bins, collector_name=session.get('collector_name'), collector_username=session.get('collector_username'))
 
+@app.route('/collector/change_password', methods=['POST'])
+def collector_change_password():
+    if 'collector_id' not in session:
+        return redirect(url_for('collector_login'))
+        
+    collector_id = session['collector_id']
+    collector = Collector.query.get(collector_id)
+    
+    current_password = request.form.get('current_password')
+    new_password = request.form.get('new_password')
+    
+    if collector and collector.check_password(current_password):
+        is_valid, msg = validate_password_policy(new_password)
+        if not is_valid:
+            flash(msg, 'error')
+        else:
+            collector.set_password(new_password)
+            db.session.commit()
+            flash('Password changed successfully!', 'success')
+    else:
+        flash('The password is not right.', 'error')
+        
+    return redirect(url_for('collector_dashboard'))
+
 @app.route('/admin/register_collector', methods=['POST'])
 def register_collector():
+    if 'admin_id' not in session:
+        return redirect(url_for('admin_login'))
+
     name = request.form.get('name')
     username = request.form.get('username')
     password = request.form.get('password')
@@ -119,11 +178,15 @@ def register_collector():
     if name and username and password:
         existing = Collector.query.filter_by(username=username).first()
         if not existing:
-            new_collector = Collector(name=name, username=username)
-            new_collector.set_password(password)
-            db.session.add(new_collector)
-            db.session.commit()
-            flash(f'Collector {name} registered successfully!', 'success')
+            is_valid, msg = validate_password_policy(password)
+            if not is_valid:
+                flash(f'Password policy error: {msg}', 'error')
+            else:
+                new_collector = Collector(name=name, username=username)
+                new_collector.set_password(password)
+                db.session.add(new_collector)
+                db.session.commit()
+                flash(f'Collector {name} registered successfully!', 'success')
         else:
             flash('Username already exists.', 'error')
             
@@ -132,6 +195,9 @@ def register_collector():
 # --- Data Management Routes ---
 @app.route('/add_bin', methods=['POST'])
 def add_bin():
+    if 'admin_id' not in session:
+        return redirect(url_for('admin_login'))
+
     bin_id = request.form.get('bin_id')
     lat = request.form.get('lat')
     lon = request.form.get('lon')
@@ -145,6 +211,9 @@ def add_bin():
 
 @app.route('/delete_bin/<bin_id>', methods=['POST'])
 def delete_bin(bin_id):
+    if 'admin_id' not in session:
+        return redirect(url_for('admin_login'))
+
     bin_obj = WasteBin.query.filter_by(bin_id=bin_id).first()
     if bin_obj:
         BinHistory.query.filter_by(bin_id=bin_id).delete()

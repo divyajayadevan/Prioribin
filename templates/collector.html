@@ -291,6 +291,20 @@
             </div>
         </div>
 
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="mb-3 px-1">
+            {% for category, message in messages %}
+            <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} small py-2 d-flex align-items-center gap-2 mb-2 shadow-sm rounded border-0 border-start border-4 border-{{ 'success' if category == 'success' else 'danger' }}">
+                <i class="bi bi-{{ 'check-circle-fill text-success' if category == 'success' else 'exclamation-circle-fill text-danger' }}"></i>
+                <span class="text-dark fw-medium lh-sm" style="font-size: 0.8rem;">{{ message }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+
         <!-- GPS Status Pill -->
         <div class="mb-4 ps-1">
             <div id="gps-status" class="status-pill status-offline">
@@ -348,10 +362,46 @@
             {% endfor %}
         </div>
 
+        <!-- Change Password Trigger -->
+        <button type="button" class="btn btn-outline-secondary w-100 d-flex align-items-center justify-content-center gap-2 mb-2 rounded-pill fw-medium" data-bs-toggle="modal" data-bs-target="#changePasswordModal">
+            <i class="bi bi-shield-lock"></i> Change Password
+        </button>
+
         <a href="/collector_logout"
             class="btn btn-end-shift w-100 d-flex align-items-center justify-content-center gap-2">
             <i class="bi bi-x-circle-fill"></i> End Shift & Logout
         </a>
+    </div>
+
+    <!-- Change Password Modal -->
+    <div class="modal fade" id="changePasswordModal" tabindex="-1" aria-labelledby="changePasswordModalLabel" aria-hidden="true" style="z-index: 3000;">
+      <div class="modal-dialog modal-dialog-centered px-3">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: var(--radius-lg); background-color: var(--bg-main);">
+          <div class="modal-header border-0 pb-0 pt-4 px-4 d-flex flex-column align-items-center position-relative">
+            <div class="bg-primary-soft text-primary rounded-circle d-flex align-items-center justify-content-center mb-3 shadow-sm" style="width: 60px; height: 60px; font-size: 1.8rem; background-color: #E0E7FF;">
+                <i class="bi bi-key-fill"></i>
+            </div>
+            <h5 class="modal-title fw-bold text-dark w-100 text-center" id="changePasswordModalLabel">Security Settings</h5>
+            <p class="text-muted small mb-0 mt-1 text-center">Update your access password.</p>
+            <button type="button" class="btn-close position-absolute top-0 end-0 m-3" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body p-4 pt-3">
+            <form action="/collector/change_password" method="POST">
+                <div class="form-floating mb-3">
+                    <input type="password" name="current_password" id="currentPassword" class="form-control rounded-card" placeholder="Current Password" required>
+                    <label for="currentPassword" class="text-muted">Current Password</label>
+                </div>
+                <div class="form-floating mb-4">
+                    <input type="password" name="new_password" id="newPassword" class="form-control rounded-card" placeholder="New Password" required>
+                    <label for="newPassword" class="text-muted">New Password</label>
+                </div>
+                <button type="submit" class="btn btn-primary w-100 rounded-pill py-2 fw-bold shadow-soft">
+                    Update Password <i class="bi bi-arrow-right ms-1"></i>
+                </button>
+            </form>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Scripts -->
